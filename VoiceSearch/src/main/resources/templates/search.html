@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Employee Search</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-analytics.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@google-cloud/speech"></script>
+
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+
+        #loading {
+            display: none;
+            font-size: 18px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+<h1>Search Employee</h1>
+
+<!-- Voice Search Button -->
+<button onclick="startVoiceRecognition()">Start Voice Search</button>
+
+<label for="employeeName">Employee Name:</label>
+<input type="text" id="employeeName" placeholder="Enter employee name">
+<button id="searchButton">Search</button>
+
+<!-- Loading indicator -->
+<div id="loading">Loading...</div>
+
+<!-- Employee Details Table -->
+<table>
+    <thead>
+    <tr>
+        <th>Name</th>
+        <th>Salary</th>
+        <th>Department</th>
+    </tr>
+    </thead>
+    <tbody id="employeeTableBody">
+    <!-- Employee rows will be added here dynamically -->
+    </tbody>
+</table>
+
+<script>
+    // Start speech recognition for employee name
+    function startVoiceRecognition() {
+        var recognition = new webkitSpeechRecognition();
+        recognition.lang = "en-US";
+        recognition.start();
+        recognition.onresult = function(event) {
+            var voiceInput = event.results[0][0].transcript;
+            console.log("Voice Input: " + voiceInput);  // Debugging line
+            $('#employeeName').val(voiceInput);
+            searchEmployeeByName(voiceInput); // Call backend search function
+        };
+    }
+
+    // Call backend to search employee by name
+    function searchEmployeeByName(name) {
+        if (!name) {
+            alert("Please enter a name to search");
+            return;
+        }
+
+        $("#loading").show();  // Show loading spinner
+        var apiUrl = "http://localhost:8084/api/employees/search?name=";  // Backend URL
+        $.ajax({
+            url: apiUrl + name,
+            method: "GET",
+            success: function(data) {
+                $("#loading").hide();  // Hide loading spinner
+                $("#employeeTableBody").empty();  // Clear existing table rows
+
+                if (data.length === 0) {
+                    $("#employeeTableBody").append('<tr><td colspan="3">No employees found</td></tr>');
+                } else {
+                    // Add new rows to table
+                    data.forEach(employee => {
+                        var row = `<tr>
+                            <td>${employee.name}</td>
+                            <td>${employee.salary}</td>
+                            <td>${employee.department}</td>
+                        </tr>`;
+                        $("#employeeTableBody").append(row);
+                    });
+                }
+            },
+            error: function() {
+                $("#loading").hide();
+                alert("Error fetching data");
+            }
+        });
+    }
+
+    // Button click to search by employee name
+    $("#searchButton").click(function() {
+        var name = $("#employeeName").val();
+        searchEmployeeByName(name);
+    });
+</script>
+</body>
+</html>
